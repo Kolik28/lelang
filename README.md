@@ -150,6 +150,21 @@ Aplikasi lelang online real-time yang dibangun dengan Laravel 13, Vue.js 3, dan 
 ```bash
 git clone https://github.com/username/lelang-app.git
 cd lelang-app
+composer install
+cd frontend
+npm install
+cd ..
+# Buat database terlebih dahulu
+php artisan migrate
+
+# Seed data (optional)
+php artisan db:seed
+php artisan schedule:work
+php artisan queue:work
+php artisan migrate
+php artisan reverb:start --debug
+cd frontend
+npm run dev
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
