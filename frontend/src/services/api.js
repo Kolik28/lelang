@@ -5,18 +5,23 @@ const API_BASE = 'http://localhost:8000/api'
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
-    'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
   withCredentials: true,
 })
 
-// Tambah token ke setiap request jika sudah login
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  } else {
+    config.headers['Content-Type'] = 'application/json'
+  }
+  
   return config
 })
 
@@ -44,7 +49,9 @@ export const auth = {
 export const auctions = {
   list: () => api.get('/auctions'),
   show: (id) => api.get(`/auctions/${id}`),
-  create: (data) => api.post('/auctions', data),
+  
+  create: (data, config = {}) => api.post('/auctions', data, config),
+  
   delete: (id) => api.delete(`/auctions/${id}`),
   myAuctions: () => api.get('/my-auctions'),
   getBids: (id) => api.get(`/auctions/${id}/bids`),

@@ -97,6 +97,15 @@
               Lelang Saya
             </router-link>
 
+            <router-link 
+              v-if="authStore.isAuthenticated"
+              to="/about" 
+              class="px-4 py-2 text-white font-medium hover:bg-indigo-500 rounded-lg transition-colors"
+              @click="mobileMenuOpen = false"
+            >
+              About
+            </router-link>
+
             <div class="border-t border-indigo-500 pt-2 mt-2">
               <div v-if="authStore.isAuthenticated" class="px-4 py-2">
                 <div class="flex items-center gap-3 mb-3">

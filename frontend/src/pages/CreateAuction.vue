@@ -15,8 +15,7 @@
         <!-- Title Field -->
         <div class="space-y-3">
           <label class="block text-sm font-bold text-slate-900">
-            Judul Lelang
-            <span class="text-red-500 ml-1">*</span>
+            Judul Lelang <span class="text-red-500 ml-1">*</span>
           </label>
           <input 
             v-model="form.title" 
@@ -32,8 +31,7 @@
         <!-- Description Field -->
         <div class="space-y-3">
           <label class="block text-sm font-bold text-slate-900">
-            Deskripsi
-            <span class="text-red-500 ml-1">*</span>
+            Deskripsi <span class="text-red-500 ml-1">*</span>
           </label>
           <textarea 
             v-model="form.description"
@@ -46,27 +44,55 @@
           <p class="text-xs text-slate-500">Minimal 10 karakter. Semakin detail, semakin banyak pembeli yang tertarik</p>
         </div>
 
-        <!-- Image URL Field -->
+        <!-- Image Section (Upload vs URL) -->
         <div class="space-y-3">
           <label class="block text-sm font-bold text-slate-900">
-            URL Gambar
-            <span class="text-slate-500 text-xs ml-1">(Opsional)</span>
+            Gambar Produk <span class="text-slate-500 text-xs ml-1">(Opsional)</span>
           </label>
-          <input 
-            v-model="form.image_url" 
-            type="url" 
-            class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all duration-200"
-            placeholder="https://example.com/image.jpg"
-          />
-          <p class="text-xs text-slate-500">Gunakan URL gambar yang valid. Gambar akan ditampilkan di kartu lelang</p>
+          
+          <!-- Toggle Options -->
+          <div class="flex gap-6 mb-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" v-model="imageSource" value="upload" class="text-indigo-600 focus:ring-indigo-500" />
+              <span class="text-sm font-medium text-slate-700">📁 Upload File</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" v-model="imageSource" value="url" class="text-indigo-600 focus:ring-indigo-500" />
+              <span class="text-sm font-medium text-slate-700">🔗 URL Gambar</span>
+            </label>
+          </div>
+
+          <!-- Upload Input -->
+          <div v-if="imageSource === 'upload'" class="space-y-2">
+            <input 
+              type="file" 
+              accept="image/*" 
+              @change="handleFileUpload"
+              class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer cursor-pointer bg-slate-50 border border-slate-300 rounded-lg py-1.5 px-2"
+            />
+            <p v-if="form.image_file" class="text-xs text-emerald-600 flex items-center gap-1">
+              ✅ File terpilih: <span class="font-semibold">{{ form.image_file.name }}</span>
+            </p>
+            <p class="text-xs text-slate-500">Format: JPG, PNG, JPEG. Maksimal ukuran 2MB.</p>
+          </div>
+
+          <!-- URL Input -->
+          <div v-else>
+            <input 
+              v-model="form.image_url" 
+              type="url" 
+              class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition-all duration-200"
+              placeholder="https://example.com/image.jpg"
+            />
+            <p class="text-xs text-slate-500">Gunakan URL gambar yang valid. Gambar akan ditampilkan di kartu lelang</p>
+          </div>
         </div>
 
         <!-- Price Section -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-3">
             <label class="block text-sm font-bold text-slate-900">
-              Harga Awal
-              <span class="text-red-500 ml-1">*</span>
+              Harga Awal <span class="text-red-500 ml-1">*</span>
             </label>
             <div class="relative">
               <span class="absolute left-4 top-3 text-slate-600 font-semibold">Rp</span>
@@ -80,13 +106,11 @@
                 required
               />
             </div>
-            <p class="text-xs text-slate-500">Harga awal lelang Anda</p>
           </div>
 
           <div class="space-y-3">
             <label class="block text-sm font-bold text-slate-900">
-              Kenaikan Tawaran Minimum
-              <span class="text-red-500 ml-1">*</span>
+              Kenaikan Tawaran Minimum <span class="text-red-500 ml-1">*</span>
             </label>
             <div class="relative">
               <span class="absolute left-4 top-3 text-slate-600 font-semibold">Rp</span>
@@ -100,7 +124,6 @@
                 required
               />
             </div>
-            <p class="text-xs text-slate-500">Penawaran harus naik minimal jumlah ini</p>
           </div>
         </div>
 
@@ -108,8 +131,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-3">
             <label class="block text-sm font-bold text-slate-900">
-              Tanggal & Waktu Mulai
-              <span class="text-red-500 ml-1">*</span>
+              Tanggal & Waktu Mulai <span class="text-red-500 ml-1">*</span>
             </label>
             <input 
               v-model="form.starts_at" 
@@ -118,13 +140,11 @@
               :min="minDateTime"
               required
             />
-            <p class="text-xs text-slate-500">Lelang akan dimulai pada waktu ini</p>
           </div>
 
           <div class="space-y-3">
             <label class="block text-sm font-bold text-slate-900">
-              Tanggal & Waktu Berakhir
-              <span class="text-red-500 ml-1">*</span>
+              Tanggal & Waktu Berakhir <span class="text-red-500 ml-1">*</span>
             </label>
             <input 
               v-model="form.ends_at" 
@@ -133,23 +153,6 @@
               :min="form.starts_at || minDateTime"
               required
             />
-            <p class="text-xs text-slate-500">Lelang akan berakhir pada waktu ini</p>
-          </div>
-        </div>
-
-        <!-- Info Box -->
-        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-2">
-          <div class="flex gap-3">
-            <span class="text-xl flex-shrink-0">ℹ️</span>
-            <div class="text-sm text-slate-700">
-              <p class="font-semibold mb-1">Tips Membuat Lelang yang Sukses:</p>
-              <ul class="space-y-1 text-xs">
-                <li>• Gunakan foto berkualitas tinggi untuk barang Anda</li>
-                <li>• Jelaskan kondisi barang dengan jujur dan detail</li>
-                <li>• Tetapkan harga awal yang kompetitif</li>
-                <li>• Berikan waktu lelang yang cukup (minimal 24 jam)</li>
-              </ul>
-            </div>
           </div>
         </div>
 
@@ -165,7 +168,7 @@
         </button>
       </form>
 
-      <!-- Error Message -->
+      <!-- Error / Success Messages (Sama seperti sebelumnya) -->
       <div v-if="error" class="mt-6 bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-lg p-4 shadow-md">
         <div class="flex gap-3">
           <span class="text-2xl flex-shrink-0">❌</span>
@@ -175,8 +178,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Success Message (Optional) -->
       <div v-if="success" class="mt-6 bg-gradient-to-r from-emerald-50 to-green-50 border-l-4 border-emerald-500 rounded-lg p-4 shadow-md">
         <div class="flex gap-3">
           <span class="text-2xl flex-shrink-0">✅</span>
@@ -200,10 +201,13 @@ const router = useRouter()
 const auctionStore = useAuctionStore()
 const authStore = useAuthStore()
 
+const imageSource = ref('url') // 'url' atau 'upload'
+
 const form = ref({
   title: '',
   description: '',
   image_url: '',
+  image_file: null, // Tambahan untuk file
   starting_price: 0,
   bid_increment: 0,
   starts_at: '',
@@ -228,14 +232,24 @@ onMounted(() => {
   form.value.starts_at = minDateTime.value
 })
 
+const handleFileUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    // Validasi ukuran file di frontend (misal max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      error.value = 'Ukuran file maksimal adalah 2MB.'
+      event.target.value = '' // Reset input
+      form.value.image_file = null
+      return
+    }
+    form.value.image_file = file
+    error.value = null
+  }
+}
+
 const handleSubmit = async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
-    return
-  }
-
-  if (!form.value.starts_at || !form.value.ends_at) {
-    error.value = 'Tanggal mulai dan berakhir harus diisi'
     return
   }
 
@@ -249,19 +263,36 @@ const handleSubmit = async () => {
   success.value = false
 
   try {
-    const payload = {
-      title: form.value.title,
-      description: form.value.description,
-      image_url: form.value.image_url || null,
-      starting_price: form.value.starting_price,
-      bid_increment: form.value.bid_increment,
-      starts_at: form.value.starts_at,  
-      ends_at: form.value.ends_at,      
+    let payload;
+    const hasFile = imageSource.value === 'upload' && form.value.image_file;
+
+    // Jika ada file yang diupload, gunakan FormData
+    if (hasFile) {
+      payload = new FormData()
+      payload.append('title', form.value.title)
+      payload.append('description', form.value.description)
+      payload.append('image', form.value.image_file)
+      payload.append('starting_price', form.value.starting_price)
+      payload.append('bid_increment', form.value.bid_increment)
+      payload.append('starts_at', form.value.starts_at)
+      payload.append('ends_at', form.value.ends_at)
+    } 
+    // Jika menggunakan URL atau tidak ada gambar, gunakan JSON biasa
+    else {
+      payload = {
+        title: form.value.title,
+        description: form.value.description,
+        image_url: form.value.image_url || null,
+        starting_price: form.value.starting_price,
+        bid_increment: form.value.bid_increment,
+        starts_at: form.value.starts_at,  
+        ends_at: form.value.ends_at,      
+      }
     }
-    
+
     await auctionStore.createAuction(payload)
     success.value = true
-    
+
     setTimeout(() => {
       router.push('/my-auctions')
     }, 2000)

@@ -17,7 +17,6 @@ export const useAuctionStore = defineStore('auction', () => {
     try {
       const response = await auctions.list()
       auctionsList.value = response.data.data || response.data
-      console.log('✅ Fetched auctions:', auctionsList.value.length)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error fetching auctions:', err)
@@ -58,13 +57,26 @@ export const useAuctionStore = defineStore('auction', () => {
     }
   }
 
-  // Create auction
+  // Create auction - UPDATED untuk handle FormData
   const createAuction = async (data) => {
     try {
-      const response = await auctions.create(data)
+      const isFormData = data instanceof FormData
+      const config = {}
+      if (!isFormData) {
+        config.headers = {
+          'Content-Type': 'application/json'
+        }
+      }
+      
+      const response = await auctions.create(data, config)
+      
+      // Refresh my auctions setelah berhasil create
+      await fetchMyAuctions()
+      
       return response.data
     } catch (err) {
       error.value = err.response?.data?.message || err.message
+      console.error('❌ Error creating auction:', err)
       throw err
     }
   }
@@ -100,14 +112,12 @@ export const useAuctionStore = defineStore('auction', () => {
     if (currentAuction.value?.id === eventData.auction_id) {
       currentAuction.value.highest_bid = eventData.highest_bid
       currentAuction.value.bids_count = eventData.bids_count
-      console.log(`✅ Auction ${eventData.auction_id} updated from event`)
     }
   }
 
   // Add bid to list from WebSocket event
   const addBidToList = (bidData) => {
     currentAuctionBids.value.unshift(bidData)
-    console.log(`✅ Bid added to list`)
   }
 
   // Update auction status from WebSocket event (AuctionStatusChanged)
@@ -115,7 +125,6 @@ export const useAuctionStore = defineStore('auction', () => {
     const auction = auctionsList.value.find(a => a.id === auctionId)
     if (auction) {
       auction.status = newStatus
-      console.log(`✅ Auction ${auctionId} status updated to ${newStatus}`)
     }
 
     // Update current auction jika sedang dilihat
@@ -134,7 +143,6 @@ export const useAuctionStore = defineStore('auction', () => {
       auction.status = 'ended'
       auction.winner_id = winnerId
       auction.highest_bid = finalPrice
-      console.log(`✅ Auction ${auctionId} ended with winner ${winnerId}`)
     }
 
     // Force reactivity
@@ -145,7 +153,6 @@ export const useAuctionStore = defineStore('auction', () => {
   const addAuction = (auction) => {
     auctionsList.value.unshift(auction)
     auctionsList.value = [...auctionsList.value]
-    console.log(`✅ New auction added: ${auction.id}`)
   }
 
   return {

@@ -7,6 +7,8 @@ use App\Http\Resources\AuctionResource;
 use App\Models\Auction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use App\Events\AuctionEnded;
 
 class AuctionController extends Controller
 {
@@ -17,11 +19,7 @@ class AuctionController extends Controller
             ->with(['seller', 'bids.bidder'])
             ->orderByDesc('ends_at')
             ->get()
-            ->map(function ($auction) {
-                // Update status berdasarkan waktu sekarang
-                $auction->updateStatusIfNeeded();
-                return $auction;
-            });
+            ->map(fn($auction) => tap($auction)->updateStatusIfNeeded());
 
         return AuctionResource::collection($auctions);
     }
@@ -29,46 +27,19 @@ class AuctionController extends Controller
     // GET /api/auctions/{id}
     public function show($id)
     {
-        $auction = Auction::with(['seller', 'bids.bidder'])
-            ->findOrFail($id);
-
-        // Update status berdasarkan waktu sekarang
+        $auction = Auction::with(['seller', 'bids.bidder'])->findOrFail($id);
         $auction->updateStatusIfNeeded();
-
         return new AuctionResource($auction);
     }
 
     // POST /api/auctions
     public function store(StoreAuctionRequest $request)
     {
-        // Parse waktu
         $startsAt = Carbon::parse($request->starts_at);
         $endsAt = Carbon::parse($request->ends_at);
         $now = Carbon::now();
 
-        // Validasi: starts_at tidak boleh di masa lalu
-        if ($startsAt->lessThan($now)) {
-            return response()->json([
-                'message' => 'Validasi gagal',
-                'errors' => [
-                    'starts_at' => ['Waktu mulai harus di masa depan.']
-                ]
-            ], 422);
-        }
-
-        // Validasi: ends_at harus setelah starts_at
-        if ($endsAt->lessThanOrEqualTo($startsAt)) {
-            return response()->json([
-                'message' => 'Validasi gagal',
-                'errors' => [
-                    'ends_at' => ['Waktu berakhir harus setelah waktu mulai.']
-                ]
-            ], 422);
-        }
-
-        // Validasi: minimum durasi lelang (misal 1 jam)
-        $durationMinutes = $startsAt->diffInMinutes($endsAt);
-        if ($durationMinutes < 60) {
+        if ($startsAt->diffInMinutes($endsAt) < 60) {
             return response()->json([
                 'message' => 'Validasi gagal',
                 'errors' => [
@@ -77,14 +48,23 @@ class AuctionController extends Controller
             ], 422);
         }
 
-        // Tentukan initial status berdasarkan starts_at
+        $imageUrl = null;
+
+        if ($request->hasFile('image')) {
+            $host = $request->getSchemeAndHttpHost();
+            $path = $request->file('image')->store('auctions', 'public');
+            $imageUrl = $host . Storage::url($path);
+        } elseif (filled($request->image_url)) {
+            $imageUrl = $request->image_url;
+        }
+
         $status = $startsAt->lessThanOrEqualTo($now) ? 'active' : 'scheduled';
 
         $auction = Auction::create([
             'seller_id' => $request->user()->id,
             'title' => $request->title,
             'description' => $request->description,
-            'image_url' => $request->image_url,
+            'image_url' => $imageUrl,
             'starting_price' => $request->starting_price,
             'bid_increment' => $request->bid_increment,
             'starts_at' => $startsAt,
@@ -102,11 +82,7 @@ class AuctionController extends Controller
             ->with(['seller', 'bids.bidder'])
             ->orderByDesc('created_at')
             ->get()
-            ->map(function ($auction) {
-                // Update status berdasarkan waktu sekarang
-                $auction->updateStatusIfNeeded();
-                return $auction;
-            });
+            ->map(fn($auction) => tap($auction)->updateStatusIfNeeded());
 
         return AuctionResource::collection($auctions);
     }
@@ -116,54 +92,43 @@ class AuctionController extends Controller
     {
         $auction = Auction::findOrFail($id);
 
-        // Check authorization
         if ($auction->seller_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'Anda tidak memiliki akses untuk menghapus lelang ini'
-            ], 403);
+            return response()->json(['message' => 'Anda tidak memiliki akses untuk menghapus lelang ini'], 403);
         }
 
-        // Check status - hanya bisa hapus lelang scheduled
         if ($auction->status !== 'scheduled') {
-            return response()->json([
-                'message' => 'Lelang tidak bisa dihapus setelah dimulai'
-            ], 422);
+            return response()->json(['message' => 'Lelang tidak bisa dihapus setelah dimulai'], 422);
+        }
+
+        if ($auction->image_url && str_contains($auction->image_url, '/storage/auctions/')) {
+            $path = str_replace('/storage/', '', $auction->image_url);
+            Storage::disk('public')->delete($path);
         }
 
         $auction->delete();
 
-        return response()->json([
-            'message' => 'Lelang berhasil dihapus'
-        ]);
+        return response()->json(['message' => 'Lelang berhasil dihapus']);
     }
 
-    // PUT /api/auctions/{id}/end (optional - manual end auction)
+    // PUT /api/auctions/{id}/end
     public function end($id, Request $request)
     {
         $auction = Auction::findOrFail($id);
 
-        // Check authorization
         if ($auction->seller_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'Anda tidak memiliki akses untuk mengakhiri lelang ini'
-            ], 403);
+            return response()->json(['message' => 'Anda tidak memiliki akses untuk mengakhiri lelang ini'], 403);
         }
 
-        // Check status
         if ($auction->status !== 'active') {
-            return response()->json([
-                'message' => 'Hanya lelang aktif yang bisa diakhiri'
-            ], 422);
+            return response()->json(['message' => 'Hanya lelang aktif yang bisa diakhiri'], 422);
         }
 
-        // Update status
         $auction->update([
             'status' => 'ended',
             'ended_at' => Carbon::now(),
         ]);
 
-        // Broadcast event
-        broadcast(new \App\Events\AuctionEnded($auction))->toOthers();
+        broadcast(new AuctionEnded($auction))->toOthers();
 
         return response()->json([
             'message' => 'Lelang berhasil diakhiri',
